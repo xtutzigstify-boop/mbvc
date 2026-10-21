@@ -16,7 +16,7 @@ const Store = (() => {
   const persist = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { console.warn('localStorage:', e.message); } };
 
   async function pull() {
-    const { data, error } = await sb.from('lessons').select('*');
+    const { data, error } = await sb.from('sched_lessons').select('*');
     if (error) { console.warn('Supabase:', error.message); return []; }
     return data.map(r => ({ id: r.id, group: r.grp, day: r.day, pair: r.pair, week: r.week, subject: r.subject, teacher: r.teacher || '', room: r.room || '' }));
   }
@@ -25,13 +25,13 @@ const Store = (() => {
   async function push() {
     const L = state.lessons;
     const names = key => [...new Set(L.map(l => l[key]).filter(Boolean))].map(name => ({ name }));
-    for (const [table, key] of [['groups', 'group'], ['teachers', 'teacher'], ['subjects', 'subject'], ['rooms', 'room']]) {
+    for (const [table, key] of [['sched_groups', 'group'], ['sched_teachers', 'teacher'], ['sched_subjects', 'subject'], ['sched_rooms', 'room']]) {
       const { error } = await sb.from(table).upsert(names(key), { onConflict: 'name' });
       if (error) throw error;
     }
-    let res = await sb.from('lessons').delete().not('id', 'is', null);
+    let res = await sb.from('sched_lessons').delete().not('id', 'is', null);
     if (res.error) throw res.error;
-    res = await sb.from('lessons').insert(L.map(l => ({ grp: l.group, day: l.day, pair: l.pair, week: l.week || 0, subject: l.subject, teacher: l.teacher || null, room: l.room || null })));
+    res = await sb.from('sched_lessons').insert(L.map(l => ({ grp: l.group, day: l.day, pair: l.pair, week: l.week || 0, subject: l.subject, teacher: l.teacher || null, room: l.room || null })));
     if (res.error) throw res.error;
   }
 
