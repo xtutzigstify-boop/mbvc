@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="vanilla">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Расписание · колледж</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Иконки: <svg class="i"><use href="#i-имя"/></svg> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .7 3.5 2.4 3.5 5.5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></symbol>
+    <symbol id="i-door" viewBox="0 0 24 24"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18"/><circle cx="15" cy="12" r=".8"/></symbol>
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1"/><circle cx="15.5" cy="15.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="15.5" cy="8.5" r="1"/><circle cx="8.5" cy="15.5" r="1"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4 4 4M4 21h16"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 9.5 4 4 0 0 1 17.5 18Z"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.6-2.1-.4-1.2.3-2.4 1.6-2.4H17a4 4 0 0 0 4-4c0-5-4-9.5-9-9.5Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19 7"/></symbol>
+    <symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+  </svg>
+
+  <div class="app">
+    <!-- Боковая панель: режим, поиск, список -->
+    <aside class="side" id="side">
+      <div class="brand">
+        <span class="logo"><svg class="i"><use href="#i-cal"/></svg></span>
+        <div><b>Расписание</b><small>1 семестр · 2026–2027</small></div>
+        <button class="icon-btn only-mobile" id="closeSide" aria-label="Закрыть"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <nav class="seg" id="mode">
+        <button data-mode="group" class="on"><svg class="i"><use href="#i-users"/></svg>Группы</button>
+        <button data-mode="teacher"><svg class="i"><use href="#i-user"/></svg>Педагоги</button>
+        <button data-mode="room"><svg class="i"><use href="#i-door"/></svg>Кабинеты</button>
+      </nav>
+      <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="q" placeholder="Поиск   ( / )" autocomplete="off"></label>
+      <div class="list" id="list"></div>
+      <button class="foot" id="foot" title="Открыть проверку расписания"></button>
+    </aside>
+
+    <!-- Основная часть -->
+    <section class="main">
+      <header class="bar">
+        <button class="icon-btn only-mobile" id="menu" aria-label="Меню"><svg class="i"><use href="#i-menu"/></svg></button>
+        <div class="crumb"><small id="kind"></small><h1 id="title"></h1><p class="meta" id="meta"></p></div>
+        <nav class="seg weeks" id="weeks" title="Чередование недель"><button data-week="0" class="on">Обе</button><button data-week="1">1 нед.</button><button data-week="2">2 нед.</button></nav>
+        <nav class="seg view" id="view">
+          <button data-view="day" class="on"><svg class="i"><use href="#i-list"/></svg><span>День</span></button>
+          <button data-view="week"><svg class="i"><use href="#i-grid"/></svg><span>Неделя</span></button>
+        </nav>
+        <div class="actions">
+          <button class="btn primary" id="generate"><svg class="i"><use href="#i-dice"/></svg><span>Сгенерировать</span></button>
+          <button class="btn" id="finder"><svg class="i"><use href="#i-clock"/></svg><span>Свободные</span></button>
+          <button class="icon-btn" id="copyDay" title="Скопировать расписание дня"><svg class="i"><use href="#i-copy"/></svg></button>
+          <button class="icon-btn" id="undo" title="Отменить (Ctrl+Z)"><svg class="i"><use href="#i-undo"/></svg></button>
+          <button class="btn" id="fileBtn"><svg class="i"><use href="#i-sheet"/></svg><span>Файл</span></button>
+          <button class="icon-btn" id="push" title="Сохранить в Supabase" hidden><svg class="i"><use href="#i-cloud"/></svg></button>
+          <button class="icon-btn" id="login" title="Войти через Google" hidden><svg class="i"><use href="#i-login"/></svg></button>
+          <button class="icon-btn" id="themeBtn" title="Тема оформления"><svg class="i"><use href="#i-palette"/></svg></button>
+        </div>
+        <div class="pop file" id="fileMenu" hidden>
+          <button data-act="import"><svg class="i"><use href="#i-up"/></svg>Импорт из Excel / CSV / JSON</button>
+          <button data-act="export"><svg class="i"><use href="#i-down"/></svg>Экспорт в CSV</button>
+          <button data-act="print"><svg class="i"><use href="#i-print"/></svg>Печать недели</button>
+          <button data-act="reset"><svg class="i"><use href="#i-reset"/></svg>Вернуть реальное расписание</button>
+        </div>
+        <div class="pop" id="themes" hidden></div>
+      </header>
+      <div class="live" id="live"></div>
+      <nav class="days" id="days"></nav>
+      <div class="stage" id="stage"></div>
+    </section>
+  </div>
+  <div class="scrim" id="scrim"></div>
+
+  <dialog id="editor">
+    <form id="form" method="dialog">
+      <h3 id="etitle"></h3>
+      <label>Группа<input name="group" list="dl-group" required></label>
+      <label>Предмет<input name="subject" list="dl-subject" required></label>
+      <label>Преподаватель<input name="teacher" list="dl-teacher"></label>
+      <label>Кабинет<input name="room" list="dl-room"></label>
+      <label>Неделя<select name="week"><option value="0">Каждая неделя</option><option value="1">Только 1 неделя</option><option value="2">Только 2 неделя</option></select></label>
+      <p class="hint" id="hint"></p>
+      <div class="row">
+        <button type="button" class="btn danger" id="del"><svg class="i"><use href="#i-trash"/></svg>Удалить</button>
+        <span></span>
+        <button value="cancel" class="btn" formnovalidate>Отмена</button>
+        <button value="ok" class="btn primary">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="finderDlg">
+    <h3>Кто свободен</h3>
+    <div class="row pick"><select id="fd"></select><select id="fp"></select></div>
+    <h4>Преподаватели</h4><div class="chips" id="freeT"></div>
+    <h4>Кабинеты</h4><div class="chips" id="freeR"></div>
+    <div class="row"><span></span><button class="btn" data-close>Закрыть</button></div>
+  </dialog>
+  <dialog id="checkDlg">
+    <h3>Проверка расписания</h3>
+    <div id="checkBody" class="checkbody"></div>
+    <div class="row"><span></span><button class="btn" data-close>Закрыть</button></div>
+  </dialog>
+  <datalist id="dl-group"></datalist><datalist id="dl-subject"></datalist>
+  <datalist id="dl-teacher"></datalist><datalist id="dl-room"></datalist>
+  <div class="toasts" id="toasts"></div>
+  <input type="file" id="file" accept=".xlsx,.xls,.csv,.json" hidden>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/generator.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
