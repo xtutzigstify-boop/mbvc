@@ -6,12 +6,13 @@ const Store = (() => {
   const cfg = window.SUPABASE_CONFIG || {};
   const sb = cfg.url && window.supabase ? window.supabase.createClient(cfg.url, cfg.key) : null;
 
-  const state = { lessons: [], base: [] };
+  const state = { lessons: [], base: [], load: [], settings: { sem: 1, weeks: 18 } };
   const undoStack = [], subscribers = [];
-  let lastId = 0;
+  let lastId = 0, lastLoadId = 0;
 
   const clone = list => JSON.parse(JSON.stringify(list));
   const withIds = list => list.map(l => ({ week: 0, ...l, id: l.id || 'l' + (++lastId) }));
+  const withLoadIds = list => list.map(r => ({ ...r, id: r.id || 'r' + (++lastLoadId) }));
   const emit = () => subscribers.forEach(fn => fn());
   const persist = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { console.warn('localStorage:', e.message); } };
 
@@ -19,6 +20,12 @@ const Store = (() => {
     const { data, error } = await sb.from('sched_lessons').select('*');
     if (error) { console.warn('Supabase:', error.message); return []; }
     return data.map(r => ({ id: r.id, group: r.grp, day: r.day, pair: r.pair, week: r.week, subject: r.subject, teacher: r.teacher || '', room: r.room || '' }));
+  }
+
+  async function pullLoad() {
+    const { data, error } = await sb.from('sched_load').select('*');
+    if (error) { console.warn('Supabase (нагрузка):', error.message); return []; }
+    return data.map(r => ({ id: r.id, group: r.grp, subject: r.subject, teacher: r.teacher || '', sem1: +r.sem1, sem2: +r.sem2, total: +r.total }));
   }
 
   // Справочники -> потом уроки (внешние ключи требуют именно такого порядка)
@@ -33,6 +40,13 @@ const Store = (() => {
     if (res.error) throw res.error;
     res = await sb.from('sched_lessons').insert(L.map(l => ({ grp: l.group, day: l.day, pair: l.pair, week: l.week || 0, subject: l.subject, teacher: l.teacher || null, room: l.room || null })));
     if (res.error) throw res.error;
+    // нагрузка
+    res = await sb.from('sched_load').delete().not('id', 'is', null);
+    if (res.error) throw res.error;
+    if (state.load.length) {
+      res = await sb.from('sched_load').insert(state.load.map(r => ({ grp: r.group, subject: r.subject, teacher: r.teacher || null, sem1: r.sem1, sem2: r.sem2, total: r.total })));
+      if (res.error) throw res.error;
+    }
   }
 
   async function init() {
@@ -40,7 +54,14 @@ const Store = (() => {
     try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) { /* битые данные — начинаем с эталона */ }
     state.base = saved?.base || clone(SEED.lessons);
     state.lessons = saved?.lessons || clone(SEED.lessons);
-    if (sb) { const cloud = await pull(); if (cloud.length) state.lessons = cloud; }
+    state.load = saved?.load || [];
+    state.settings = { sem: 1, weeks: 18, ...(saved?.settings || {}) };
+    if (sb) {
+      const cloud = await pull(); if (cloud.length) state.lessons = cloud;
+      const rows = await pullLoad(); if (rows.length) state.load = rows;
+    }
+    state.load.forEach(r => { const m = /^r(\d+)$/.exec(r.id || ''); if (m) lastLoadId = Math.max(lastLoadId, +m[1]); });
+    state.load = withLoadIds(state.load);
     state.lessons.forEach(l => { const m = /^l(\d+)$/.exec(l.id || ''); if (m) lastId = Math.max(lastId, +m[1]); });
     state.lessons = withIds(state.lessons);
     emit();
@@ -65,6 +86,10 @@ const Store = (() => {
 
   return {
     init, change, undo, push,
+    loadRows: () => state.load,
+    settings: () => state.settings,
+    setLoad: rows => { state.load = withLoadIds(rows); persist(); emit(); },
+    setSettings: patch => { Object.assign(state.settings, patch); persist(); emit(); },
     reset: () => change(clone(state.base)),
     onChange: fn => subscribers.push(fn),
     lessons: () => state.lessons,

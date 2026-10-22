@@ -26,6 +26,8 @@
   const nowInfo = () => { const d = new Date(), w = d.getDay(); return { day: w >= 1 && w <= 5 ? w - 1 : -1, min: d.getHours() * 60 + d.getMinutes() }; };
   const ui = { mode: 'group', value: null, view: 'day', day: Math.max(0, nowInfo().day), q: '', week: 0, anim: '' };
   let editing = null, dragId = null, generating = false;
+  const inLoad = () => document.body.dataset.section === 'load';
+  const canEdit = () => document.body.dataset.admin === '1';
 
   /* ---------- Выборки ---------- */
   const ENTITIES = {
@@ -161,7 +163,7 @@
         const cards = byGroup(L.filter(l => l.day === d && l.pair === p)).map(g => {
           const meta = ui.mode === 'group' ? g.map(l => l.teacher).filter(Boolean).join(' / ') : g[0].group;
           const room = [...new Set(g.map(l => l.room).filter(Boolean))].join(', ');
-          return `<article class="card ${g.some(l => bad.has(l.id)) ? 'bad' : ''}" draggable="true" data-id="${g[0].id}" style="--h:${hue(g[0].subject)};--i:${n++};${scatter()}"><h3>${esc(g.map(l => l.subject).join(' / '))}</h3><small>${esc(meta)}${room ? ' · ' + esc(room) : ''}</small></article>`;
+          return `<article class="card ${g.some(l => bad.has(l.id)) ? 'bad' : ''}" draggable="${canEdit()}" data-id="${g[0].id}" style="--h:${hue(g[0].subject)};--i:${n++};${scatter()}"><h3>${esc(g.map(l => l.subject).join(' / '))}</h3><small>${esc(meta)}${room ? ' · ' + esc(room) : ''}</small></article>`;
         }).join('');
         const [s, e] = bellsOf(d)[p - 1];
         html += `<div class="cell ${t.day === d && t.min >= s && t.min < e ? 'now' : ''}" data-day="${d}" data-pair="${p}">${cards}</div>`;
@@ -174,11 +176,12 @@
     const bad = Rules.findConflicts(Store.lessons());
     (ui.view === 'day' ? renderDay : renderWeek)(bad);
     $('#stage').className = 'stage ' + ui.anim;
-    $('#foot').innerHTML = `<b>${new Set(Store.lessons().map(l => l.group + l.day + l.pair)).size}</b> пар · ${bad.size ? `<span class="bad">накладок: ${bad.size}</span>` : 'накладок нет ✓'}`;
+    if (!inLoad()) $('#foot').innerHTML = `<b>${new Set(Store.lessons().map(l => l.group + l.day + l.pair)).size}</b> пар · ${bad.size ? `<span class="bad">накладок: ${bad.size}</span>` : 'накладок нет ✓'}`;
   }
 
   function renderAll() {
-    renderList(); renderHead(); renderLive(); renderDays(); renderStage();
+    if (!inLoad()) renderList();
+    renderHead(); renderLive(); renderDays(); renderStage();
     ui.anim = '';
   }
 
@@ -230,20 +233,27 @@
 
   /* ---------- Генерация с анимацией ---------- */
   async function generate() {
-    if (generating || !confirm('Перемешать расписание? Возьмём реальное за основу: число пар в дне ±1, без окон и без накладок у преподавателей. Это можно отменить кнопкой ↶')) return;
+    if (generating) return;
+    const rows = Store.loadRows(), plan = Planner.draft(rows, Store.settings());
+    if (rows.length && !plan.lessons.length) return toast('В «Нагрузке» нет часов для выбранного семестра');
+    const source = rows.length ? plan.lessons : Store.base();
+    const ask = rows.length ? 'Составить новое расписание по «Нагрузке»? Пары сами разойдутся по дням без окон и без накладок у преподавателей. Это можно отменить кнопкой ↶'
+      : 'Перемешать расписание? Возьмём реальное за основу: число пар в дне ±1, без окон и без накладок у преподавателей. Это можно отменить кнопкой ↶';
+    if (!confirm(ask)) return;
     generating = true;
     const btn = $('#generate'), label = btn.querySelector('span');
     btn.classList.add('busy'); label.textContent = 'Перемешиваю…';
     $('#stage').classList.add('shuffling');                       // карточки разлетаются, пока считаем
     const started = performance.now();
-    const { lessons } = await Generator.run(Store.base(), Math.floor(Math.random() * 1e9), p => btn.style.setProperty('--p', p));
+    const { lessons } = await Generator.run(source, Math.floor(Math.random() * 1e9), p => btn.style.setProperty('--p', p));
     await sleep(Math.max(0, 750 - (performance.now() - started)));
     ui.anim = 'deal';
     Store.change(lessons);                                        // карточки «раздаются» на новые места
     const left = new Set([...Rules.findConflicts(Store.lessons()).keys()]).size;
     btn.classList.remove('busy'); label.textContent = 'Сгенерировать'; btn.style.removeProperty('--p');
     generating = false;
-    toast(left ? `Готово. Остались накладки: ${left} — у перегруженных преподавателей и кабинетов, подробности в «Проверке»` : 'Готово: пар столько же, окон нет, накладок нет ✨', 6000);
+    const lost = plan.skipped.reduce((n, g) => n + g.count, 0);
+    toast((left ? `Готово. Остались накладки: ${left} — у перегруженных преподавателей, подробности в «Проверке»` : 'Готово: окон нет, накладок нет ✨') + (lost ? ` · не поместилось пар: ${lost}` : ''), 6000);
   }
 
   /* ---------- Свободные преподаватели и кабинеты ---------- */
@@ -357,6 +367,7 @@
     stage.onclick = e => {
       const chip = e.target.closest('.chip[data-mode]'), part = e.target.closest('[data-id]'), add = e.target.closest('.add'), cell = e.target.closest('.cell');
       if (chip) return select(chip.dataset.mode, chip.dataset.val);
+      if (!canEdit()) return;
       if (part) return openEditor(Store.lessons().find(l => l.id === part.dataset.id));
       const spot = add || cell;
       if (spot) openEditor({ day: +spot.dataset.day, pair: +spot.dataset.pair, week: 0, group: ui.mode === 'group' ? ui.value : '', teacher: ui.mode === 'teacher' ? ui.value : '', room: ui.mode === 'room' ? ui.value : '' });
@@ -366,16 +377,16 @@
       const r = c.getBoundingClientRect();
       c.style.setProperty('--mx', e.clientX - r.left + 'px'); c.style.setProperty('--my', e.clientY - r.top + 'px');
     };
-    stage.ondragstart = e => { const c = e.target.closest('.card'); if (c) { dragId = c.dataset.id; c.classList.add('drag'); } };
+    stage.ondragstart = e => { const c = e.target.closest('.card'); if (c && canEdit()) { dragId = c.dataset.id; c.classList.add('drag'); } };
     stage.ondragend = () => { dragId = null; stage.querySelectorAll('.drag,.over').forEach(x => x.classList.remove('drag', 'over')); };
     stage.ondragover = e => { const c = e.target.closest('.cell'); if (c && dragId) { e.preventDefault(); stage.querySelectorAll('.over').forEach(x => x.classList.remove('over')); c.classList.add('over'); } };
     stage.ondrop = e => { const c = e.target.closest('.cell'); if (c && dragId) moveLesson(dragId, +c.dataset.day, +c.dataset.pair); };
   }
 
   function bindControls() {
-    $('#mode').onclick = e => { const b = e.target.closest('button'); if (!b) return; ui.mode = b.dataset.mode; ui.value = null; document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b)); renderAll(); };
-    $('#list').onclick = e => { const b = e.target.closest('.it'); if (b) { document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x.dataset.mode === b.dataset.mode)); select(b.dataset.mode, b.dataset.val); } };
-    $('#q').oninput = e => { ui.q = e.target.value; renderList(); };
+    $('#mode').onclick = e => { const b = e.target.closest('button'); if (!b || inLoad()) return; ui.mode = b.dataset.mode; ui.value = null; document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b)); renderAll(); };
+    $('#list').onclick = e => { const b = inLoad() ? null : e.target.closest('.it'); if (b) { document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x.dataset.mode === b.dataset.mode)); select(b.dataset.mode, b.dataset.val); } };
+    $('#q').oninput = e => { if (inLoad()) return; ui.q = e.target.value; renderList(); };
     $('#q').onkeydown = e => { if (e.key === 'Enter') $('#list .it')?.click(); };
     $('#view').onclick = e => { const b = e.target.closest('button'); if (!b) return; ui.view = b.dataset.view; document.querySelectorAll('#view button').forEach(x => x.classList.toggle('on', x === b)); renderDays(); renderStage(); };
     $('#weeks').onclick = e => { const b = e.target.closest('button'); if (!b) return; ui.week = +b.dataset.week; document.querySelectorAll('#weeks button').forEach(x => x.classList.toggle('on', x === b)); renderLive(); renderStage(); };
@@ -386,7 +397,7 @@
     $('#generate').onclick = generate;
     $('#finder').onclick = openFinder;
     $('#fd').onchange = $('#fp').onchange = renderFinder;
-    $('#foot').onclick = openChecker;
+    $('#foot').onclick = () => { if (!inLoad()) openChecker(); };
     $('#copyDay').onclick = copyDay;
     $('#undo').onclick = () => toast(Store.undo() ? 'Отменено' : 'Нечего отменять');
     $('#fileBtn').onclick = e => { e.stopPropagation(); $('#themes').hidden = true; $('#fileMenu').hidden = !$('#fileMenu').hidden; };
@@ -400,7 +411,11 @@
     document.addEventListener('click', () => { $('#themes').hidden = true; $('#fileMenu').hidden = true; });
     $('#file').onchange = e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ''; };
     $('#login').onclick = () => Store.signIn();
-    $('#push').onclick = () => Store.push().then(() => toast('Сохранено в Supabase ☁'), err => toast('Облако: ' + err.message + ' (нужен вход)'));
+    $('#push').onclick = async () => {
+      const b = $('#push'); b.classList.add('busy');
+      try { await Store.push(); toast('Сохранено в Supabase ☁'); } catch (err) { toast('Облако: ' + err.message + ' (нужен вход)'); }
+      b.classList.remove('busy');
+    };
     $('#push').hidden = $('#login').hidden = !Store.cloud;
 
     $('#form').oninput = updateHint;
@@ -425,12 +440,18 @@
       const typing = /INPUT|SELECT/.test(document.activeElement.tagName) || document.querySelector('dialog[open]');
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); Store.undo(); }
       else if (e.key === '/' && !typing) { e.preventDefault(); $('#q').focus(); }
-      else if (!typing && ui.view === 'day' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { ui.day = (ui.day + (e.key === 'ArrowRight' ? 1 : 4)) % 5; renderDays(); renderStage(); }
+      else if (!typing && !inLoad() && ui.view === 'day' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { ui.day = (ui.day + (e.key === 'ArrowRight' ? 1 : 4)) % 5; renderDays(); renderStage(); }
     });
     setInterval(() => { if (!generating) { renderLive(); renderStage(); } }, 30000);   // «идёт сейчас» обновляется сам
   }
 
+  // Общие помощники для admin.js и load.js
+  window.App = { toast, esc, hue, icon, unique, generate, inLoad, render: renderAll,
+    toggleThemes: e => { e.stopPropagation(); $('#fileMenu').hidden = true; $('#themes').hidden = !$('#themes').hidden; } };
+
+  // Первая загрузка: данные приходят асинхронно (в том числе из облака), заставка сменяется плавным появлением
+  const reveal = () => { document.body.classList.remove('booting'); setTimeout(() => $('#splash')?.remove(), 1000); };
   Store.onChange(() => renderAll());
   bindTheme(); bindStage(); bindControls();
-  Store.init();
+  Promise.all([Store.init(), sleep(600)]).then(reveal, reveal);
 })();

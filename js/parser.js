@@ -54,6 +54,63 @@ const Parser = (() => {
     return all;
   }
 
-  return { parseGrid, parseWorkbook };
+  /* ---------- Нагрузка: группа — предмет — семестры — всего — преподаватель ---------- */
+
+  const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.').replace(/[^\d.\-]/g, '')); return Number.isFinite(n) ? n : 0; };
+
+  // «Фамилия И.О.» — человек; «ВАКАНСИЯ», «ставка мастера» и т.п. — не преподаватель, ограничений по нему нет
+  const personOrEmpty = text => (/\p{L}\.\s?\p{L}?\.?/u.test(text) ? text : '');
+  const HEADER_WORD = /^(предмет|групп|дисциплин|всего|итого|\d)/i;
+  const LOOKALIKE = { c: 'с', e: 'е', o: 'о', a: 'а', p: 'р', x: 'х', y: 'у' };
+
+  // Ищем строку-заголовок и запоминаем, в каком столбце что лежит
+  function findColumns(row) {
+    const cols = {};
+    row.forEach((cell, c) => {
+      const t = norm(cell).toLowerCase().replace(/[a-z]/g, ch => LOOKALIKE[ch] || ch);   // в Excel часто латинская «c» вместо «с»
+      if (/^групп/.test(t)) cols.group = c;
+      else if (/^(предмет|дисциплин)/.test(t)) cols.subject = c;
+      else if (/^(преподав|педагог)/.test(t)) cols.teacher = c;
+      else if (/^1\s*сем/.test(t)) cols.sem1 = c;
+      else if (/^2\s*сем/.test(t)) cols.sem2 = c;
+      else if (/^семестр/.test(t)) cols.sems = c;
+      else if (/^(всего|итого)/.test(t)) cols.total = c;
+    });
+    return cols.group !== undefined && cols.subject !== undefined ? cols : null;
+  }
+
+  // Два формата: «плоский» (преподаватель в своём столбце) и как в таблице колледжа
+  // (имя преподавателя отдельной строкой, под ним его группы и предметы)
+  function parseLoadGrid(rows) {
+    const items = [];
+    let cols = null, teacher = '';
+    for (const row of rows) {
+      const head = findColumns(row);
+      if (head) { cols = head; continue; }
+      const cells = row.map(norm).filter(Boolean);
+      const isName = cells.length === 1 && !HEADER_WORD.test(cells[0]);   // имя преподавателя — отдельная строка из одной ячейки
+      if (!cols) { if (isName) teacher = personOrEmpty(cells[0]); continue; }   // оно стоит выше заголовка
+      const group = norm(row[cols.group]), subject = norm(row[cols.subject]);
+      if (!group) {   // строка без группы, где только текст, — имя преподавателя
+        if (isName) teacher = personOrEmpty(cells[0]);
+        continue;
+      }
+      if (!subject || /^(итого|групп)/i.test(group)) continue;
+      let sem1 = cols.sem1 !== undefined ? num(row[cols.sem1]) : 0, sem2 = cols.sem2 !== undefined ? num(row[cols.sem2]) : 0;
+      const total0 = cols.total !== undefined ? num(row[cols.total]) : 0;
+      if (cols.sems !== undefined && !sem1 && !sem2 && total0) {   // столбец «Семестры»: 1, 2 или «1,2»
+        const s = norm(row[cols.sems]);
+        if (/1/.test(s) && /2/.test(s)) sem1 = sem2 = total0 / 2; else if (/2/.test(s)) sem2 = total0; else sem1 = total0;
+      }
+      const total = total0 || sem1 + sem2;
+      if (!total) continue;
+      items.push({ group: GROUP_RE.test(group) ? groupName(group) : group, subject, teacher: cols.teacher !== undefined ? norm(row[cols.teacher]) : teacher, sem1, sem2, total });
+    }
+    return items;
+  }
+
+  const parseLoadWorkbook = sheets => sheets.flatMap(parseLoadGrid);
+
+  return { parseGrid, parseWorkbook, parseLoadGrid, parseLoadWorkbook };
 })();
 if (typeof module !== 'undefined') module.exports = Parser;
