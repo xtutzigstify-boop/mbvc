@@ -5,7 +5,7 @@ const Parser = (() => {
   const DAY_WORDS = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница'];
   const MAX_PAIR = 6;
   const GROUP_RE = /^\p{L}{1,4}\s*-?\s*\d{2}$/u;                     // ЭМ-11, ЭГС 11, ЭМ - 41, У-11
-  const NAME = String.raw`\p{L}[\p{L}-]*\s+\p{L}\.\s?(?:\p{L}\.)?`;  // Фамилия И.О.
+  const NAME = String.raw`\p{L}[\p{L}-]*\s+\p{L}\s?\.\s?(?:\p{L}\s?\.*)?\.*`;   // допускаем «Е.В .», «А.Д..» и «М.Б» без точки  // Фамилия И.О.
   const TEACHER_RE = new RegExp(`(${NAME}(?:\\s*,\\s*${NAME})*)\\s*$`, 'u');
 
   const norm = s => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -14,7 +14,7 @@ const Parser = (() => {
   // «Физика     Лондарь П.Н.» -> предмет + преподаватель (в Excel они в одной ячейке)
   function splitTeacher(text) {
     const t = norm(text), m = t.match(TEACHER_RE);
-    return m ? { subject: t.slice(0, m.index).trim(), teacher: m[1].replace(/\s*,\s*/g, ', ') } : { subject: t, teacher: '' };
+    return m ? { subject: t.slice(0, m.index).trim(), teacher: m[1].replace(/\s*,\s*/g, ', ').replace(/\s+\./g, '.').replace(/\.{2,}/g, '.').replace(/(\p{L}\.\p{L})(?=,|$)/gu, '$1.') } : { subject: t, teacher: '' };
   }
 
   // Ячейка может быть с чередованием «А // Б»: неделя 1 / неделя 2
