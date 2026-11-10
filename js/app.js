@@ -54,6 +54,7 @@
   function toast(text, ms = 3800) {
     const el = document.createElement('div');
     el.className = 'toast'; el.textContent = text;
+    el.style.setProperty('--ms', ms + 'ms');   // полоска-таймер под уведомлением
     $('#toasts').append(el);
     setTimeout(() => el.remove(), ms);
   }
@@ -176,7 +177,7 @@
     const bad = Rules.findConflicts(Store.lessons());
     (ui.view === 'day' ? renderDay : renderWeek)(bad);
     $('#stage').className = 'stage ' + ui.anim;
-    if (!inLoad()) $('#foot').innerHTML = `<b>${new Set(Store.lessons().map(l => l.group + l.day + l.pair)).size}</b> пар · ${bad.size ? `<span class="bad">накладок: ${bad.size}</span>` : 'накладок нет ✓'}`;
+    if (!inLoad()) $('#foot').innerHTML = `<b>${new Set(Store.lessons().map(l => l.group + l.day + l.pair)).size}</b> пар · ${bad.pairs ? `<span class="bad">совмещённых пар: ${bad.pairs}</span>` : 'совмещённых пар нет ✓'}`;
   }
 
   function renderAll() {
@@ -213,7 +214,7 @@
     const c = candidate(), L = Store.lessons().filter(l => l.id !== editing.id);
     const hit = L.find(l => l.group !== c.group && Rules.clash(c, l));
     const load = new Set(L.filter(l => l.group === c.group && l.day === c.day).map(l => l.pair)).size;
-    $('#hint').textContent = hit ? `⚠ ${Rules.clash(c, hit)} (группа ${hit.group})` : load >= 5 ? `⚠ У группы уже ${load} пар в этот день` : '✓ Накладок нет';
+    $('#hint').textContent = hit ? `⚠ ${Rules.clash(c, hit)} (группа ${hit.group})` : load >= 5 ? `⚠ У группы уже ${load} пар в этот день` : '✓ Совмещений нет';
   }
 
   function saveEditor() {
@@ -237,8 +238,8 @@
     const rows = Store.loadRows(), plan = Planner.draft(rows, Store.settings());
     if (rows.length && !plan.lessons.length) return toast('В «Нагрузке» нет часов для выбранного семестра');
     const source = rows.length ? plan.lessons : Store.base();
-    const ask = rows.length ? 'Составить новое расписание по «Нагрузке»? Пары сами разойдутся по дням без окон и без накладок у преподавателей. Это можно отменить кнопкой ↶'
-      : 'Перемешать расписание? Возьмём реальное за основу: число пар в дне ±1, без окон и без накладок у преподавателей. Это можно отменить кнопкой ↶';
+    const ask = rows.length ? 'Составить новое расписание по «Нагрузке»? Пары сами разойдутся по дням без окон и без совмещённых пар у преподавателей. Это можно отменить кнопкой ↶'
+      : 'Перемешать расписание? Возьмём реальное за основу: число пар в дне ±1, без окон и без совмещённых пар у преподавателей. Это можно отменить кнопкой ↶';
     if (!confirm(ask)) return;
     generating = true;
     const btn = $('#generate'), label = btn.querySelector('span');
@@ -249,11 +250,11 @@
     await sleep(Math.max(0, 750 - (performance.now() - started)));
     ui.anim = 'deal';
     Store.change(lessons);                                        // карточки «раздаются» на новые места
-    const left = new Set([...Rules.findConflicts(Store.lessons()).keys()]).size;
+    const left = Rules.findConflicts(Store.lessons()).pairs;
     btn.classList.remove('busy'); label.textContent = 'Сгенерировать'; btn.style.removeProperty('--p');
     generating = false;
     const lost = plan.skipped.reduce((n, g) => n + g.count, 0);
-    toast((left ? `Готово. Остались накладки: ${left} — у перегруженных преподавателей, подробности в «Проверке»` : 'Готово: окон нет, накладок нет ✨') + (lost ? ` · не поместилось пар: ${lost}` : ''), 6000);
+    toast((left ? `Готово. Остались совмещённые пары: ${left} — подробности в «Проверке»` : 'Готово: окон нет, совмещённых пар нет ✨') + (lost ? ` · не поместилось пар: ${lost}` : ''), 6000);
   }
 
   /* ---------- Свободные преподаватели и кабинеты ---------- */
@@ -285,15 +286,7 @@
       seen.add(key);
       rows.push(`<button class="it" data-mode="group" data-val="${esc(l.group)}" data-day="${l.day}">${DAYS[l.day]}, ${l.pair} пара — ${esc(bad.get(l.id))}<em>${esc(l.group)}</em></button>`);
     }
-    // загрузка: сколько клеток недели (из 30) занято у преподавателя или кабинета
-    const load = new Map();
-    for (const l of L) for (const n of [...(Rules.isPE(l.subject) ? [] : Rules.split(l.teacher)), ...Rules.split(l.room)]) {
-      if (!load.has(n)) load.set(n, new Set());
-      load.get(n).add(l.day * 10 + l.pair);
-    }
-    const heavy = [...load].filter(([, s]) => s.size >= 28).sort((a, b) => b[1].size - a[1].size);
-    $('#checkBody').innerHTML = (rows.length ? `<h4>Накладки: ${rows.length}</h4>${rows.join('')}` : '<p class="ok">Накладок нет ✓</p>')
-      + (heavy.length ? `<h4>Почти нет свободных клеток</h4>${heavy.map(([n, s]) => `<p class="meta">${esc(n)} — занято ${s.size} из 30 клеток недели</p>`).join('')}` : '');
+    $('#checkBody').innerHTML = rows.length ? `<h4>Совмещённые пары: ${bad.pairs}</h4>${rows.join('')}` : '<p class="ok">Совмещённых пар нет ✓</p>';
     $('#checkDlg').showModal();
   }
 
@@ -347,10 +340,18 @@
     document.querySelectorAll('#themes button').forEach(b => b.classList.toggle('on', b.dataset.theme === name));
   }
 
+  // Смена темы «волной» от места клика (View Transitions API; в старых браузерах просто меняется)
+  function changeTheme(name, e) {
+    if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return setTheme(name);
+    document.documentElement.style.setProperty('--vx', e.clientX + 'px');
+    document.documentElement.style.setProperty('--vy', e.clientY + 'px');
+    document.startViewTransition(() => setTheme(name));
+  }
+
   function bindTheme() {
     $('#themes').innerHTML = Object.entries(THEMES).map(([k, v]) => `<button data-theme="${k}"><i></i>${v}</button>`).join('');
     $('#themeBtn').onclick = e => { e.stopPropagation(); $('#fileMenu').hidden = true; $('#themes').hidden = !$('#themes').hidden; };
-    $('#themes').onclick = e => { const b = e.target.closest('button'); if (b) setTheme(b.dataset.theme); };
+    $('#themes').onclick = e => { const b = e.target.closest('button'); if (b) changeTheme(b.dataset.theme, e); };
     setTheme(localStorage.getItem('po33-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'lagoon' : 'vanilla'));
   }
 
@@ -376,7 +377,10 @@
       const c = e.target.closest('.card'); if (!c) return;
       const r = c.getBoundingClientRect();
       c.style.setProperty('--mx', e.clientX - r.left + 'px'); c.style.setProperty('--my', e.clientY - r.top + 'px');
+      c.style.setProperty('--ry', ((e.clientX - r.left) / r.width - .5) * 7 + 'deg');   // лёгкий наклон карточки за курсором
+      c.style.setProperty('--rx', (.5 - (e.clientY - r.top) / r.height) * 5 + 'deg');
     };
+    stage.onmouseout = e => { const c = e.target.closest('.card'); if (c && !c.contains(e.relatedTarget)) { c.style.removeProperty('--rx'); c.style.removeProperty('--ry'); } };
     stage.ondragstart = e => { const c = e.target.closest('.card'); if (c && canEdit()) { dragId = c.dataset.id; c.classList.add('drag'); } };
     stage.ondragend = () => { dragId = null; stage.querySelectorAll('.drag,.over').forEach(x => x.classList.remove('drag', 'over')); };
     stage.ondragover = e => { const c = e.target.closest('.cell'); if (c && dragId) { e.preventDefault(); stage.querySelectorAll('.over').forEach(x => x.classList.remove('over')); c.classList.add('over'); } };
@@ -450,8 +454,11 @@
     toggleThemes: e => { e.stopPropagation(); $('#fileMenu').hidden = true; $('#themes').hidden = !$('#themes').hidden; } };
 
   // Первая загрузка: данные приходят асинхронно (в том числе из облака), заставка сменяется плавным появлением
-  const reveal = () => { document.body.classList.remove('booting'); setTimeout(() => $('#splash')?.remove(), 1000); };
+  const reveal = () => { document.body.classList.remove('booting'); setTimeout(() => $('#splash')?.remove(), 1300); };
   Store.onChange(() => renderAll());
   bindTheme(); bindStage(); bindControls();
-  Promise.all([Store.init(), sleep(600)]).then(reveal, reveal);
+  // в первый визит заставка играет дольше, дальше — коротко
+  const firstVisit = !localStorage.getItem('po33-seen');
+  localStorage.setItem('po33-seen', '1');
+  Promise.all([Store.init(), sleep(firstVisit ? 2000 : 800)]).then(reveal, reveal);
 })();
