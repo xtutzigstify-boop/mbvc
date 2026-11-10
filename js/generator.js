@@ -4,8 +4,8 @@ const Rules = (() => {
   const split = s => (s || '').split(',').map(x => x.trim()).filter(Boolean);
   const isPE = s => /физическ|дене/i.test(s || '');
 
-  // Накладка двух пар: тот же день и пара, пересекающиеся недели, общий преподаватель или кабинет.
-  // Физкультура потоковая (у одного преподавателя сразу несколько групп) — это не накладка.
+  // Совмещённые пары: тот же день и пара, пересекающиеся недели, общий преподаватель или кабинет.
+  // Физкультура потоковая (у одного преподавателя сразу несколько групп) — это не совмещение.
   function clash(a, b) {
     if (a.day !== b.day || a.pair !== b.pair || (a.week && b.week && a.week !== b.week)) return '';
     const teacher = !(isPE(a.subject) && isPE(b.subject)) && split(a.teacher).find(t => split(b.teacher).includes(t));
@@ -16,6 +16,7 @@ const Rules = (() => {
 
   function findConflicts(lessons) {
     const slots = new Map(), bad = new Map();
+    let pairs = 0;
     for (const l of lessons) {
       const key = l.day * 10 + l.pair;
       if (!slots.has(key)) slots.set(key, []);
@@ -25,10 +26,11 @@ const Rules = (() => {
       for (let i = 0; i < list.length; i++) {
         for (let j = i + 1; j < list.length; j++) {
           const text = clash(list[i], list[j]);
-          if (text) { bad.set(list[i].id, text); bad.set(list[j].id, text); }
+          if (text) { bad.set(list[i].id, text); bad.set(list[j].id, text); pairs++; }
         }
       }
     }
+    bad.pairs = pairs;   // сколько совмещённых пар (а не уроков) найдено
     return bad;
   }
   return { split, isPE, clash, findConflicts };
@@ -141,7 +143,7 @@ const Generator = (() => {
     occupy(st, b, g.cells[i], 1); occupy(st, a, g.cells[j], 1);
   }
 
-  // Клетки, где прямо сейчас есть накладка
+  // Клетки, где прямо сейчас есть совмещение
   function hotCells(st, groups) {
     const hot = [];
     for (const g of groups) g.assign.forEach((u, i) => { if (u.ents.some(e => st.occ.get(g.cells[i] + '|' + e) > 1)) hot.push([g, i]); });
@@ -181,7 +183,7 @@ const Generator = (() => {
     reindex(g);
   }
 
-  /* ---------- Главный цикл: меняем пары местами внутри группы, пока не уйдут накладки ---------- */
+  /* ---------- Главный цикл: меняем пары местами внутри группы, пока не уйдут совмещения ---------- */
 
   const nextFrame = () => new Promise(r => setTimeout(r, 0));
 
