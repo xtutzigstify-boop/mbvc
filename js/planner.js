@@ -10,23 +10,14 @@ const Planner = (() => {
   const weeklyUnits = (hours, weeks) => hours > 0 ? Math.max(1, Math.round(hours / weeks)) / 2 : 0;
 
   function summary(rows, { sem, weeks }) {
-    const byGroup = {}, byTeacher = {};
     let hours = 0, total = 0, pairs = 0;
     for (const it of rows) {
-      const h = hoursFor(it, sem), u = weeklyUnits(h, weeks);
-      hours += h; total += it.total; pairs += u;
-      byGroup[it.group] = (byGroup[it.group] || 0) + u;
-      Rules.split(it.teacher).forEach(t => byTeacher[t] = (byTeacher[t] || 0) + u);
+      const h = hoursFor(it, sem);
+      hours += h; total += it.total; pairs += weeklyUnits(h, weeks);
     }
-    const warn = (who, map, label) => Object.entries(map).filter(([, n]) => n > MAX_WEEK - 3).map(([name, n]) => ({
-      level: n > MAX_WEEK ? 'bad' : 'soft',
-      text: n > MAX_WEEK ? `${label} ${name}: ${n} пар в неделю, а в неделе всего ${MAX_WEEK} клеток — часть пар не поместится`
-                         : `${label} ${name}: ${n} пар в неделю — почти нет свободных клеток, возможны накладки`,
-    }));
     return {
       groups: new Set(rows.map(r => r.group)).size, subjects: new Set(rows.map(r => r.subject)).size,
       teachers: new Set(rows.flatMap(r => Rules.split(r.teacher))).size, hours, total, pairs,
-      warnings: [...warn('g', byGroup, 'Группа'), ...warn('t', byTeacher, 'Преподаватель')],
     };
   }
 
