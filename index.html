@@ -11,10 +11,33 @@
 </head>
 <body class="booting" data-admin="0" data-section="schedule">
   <!-- Заставка: пока грузятся данные (в том числе из облака), показываем скелетон, потом всё плавно проявляется -->
-  <div class="splash" id="splash"><div class="splash-in">
-    <span class="logo"><svg class="i"><use href="#i-cal"/></svg></span><b>Расписание</b>
-    <div class="sk"><i></i><i></i><i></i></div>
-  </div></div>
+  <div class="splash" id="splash">
+    <div class="splash-orbs"><i></i><i></i></div>
+    <div class="splash-in">
+      <div class="emblem"><span class="ring"></span><span class="logo"><svg class="i"><use href="#i-cal"/></svg></span></div>
+      <h2 class="word" id="splashWord" aria-label="Расписание"></h2>
+      <div class="splash-grid" id="splashGrid" aria-hidden="true"></div>
+      <div class="splash-bar"><i></i></div>
+      <p class="splash-msg" id="splashMsg">Раскладываю пары по дням…</p>
+    </div>
+  </div>
+  <script>
+    // Заставка собирается сразу: буквы заголовка, мини-расписание из цветных карточек, меняющиеся подписи
+    (() => {
+      const hues = [345, 85, 210, 28, 165, 275];
+      document.getElementById('splashWord').innerHTML = [...'Расписание'].map((ch, i) => `<span style="--i:${i}">${ch}</span>`).join('');
+      const grid = document.getElementById('splashGrid');
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) {
+        const cell = document.createElement('i');
+        cell.style.cssText = `--h:${hues[(r * 7 + c * 3 + r * c) % 6]};--d:${(c * 80 + r * 100 + Math.random() * 200) | 0}ms`;
+        grid.append(cell);
+      }
+      const msgs = ['Раскладываю пары по дням…', 'Проверяю совмещённые пары…', 'Почти готово…'], el = document.getElementById('splashMsg');
+      let k = 0;
+      const t = setInterval(() => { if (!document.body.contains(el)) return clearInterval(t); el.textContent = msgs[++k % 3]; }, 700);
+    })();
+  </script>
+  <div class="orbs" aria-hidden="true"><i></i><i></i><i></i></div>
   <!-- Иконки: <svg class="i"><use href="#i-имя"/></svg> -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></symbol>
@@ -119,7 +142,6 @@
         <label class="field">Семестр<select id="loadSem"><option value="1">1 семестр</option><option value="2">2 семестр</option></select></label>
         <label class="field">Недель<input id="loadWeeks" type="number" min="8" max="30" step="1"></label>
       </div>
-      <div id="loadWarn"></div>
       <div class="ltable" id="loadTable"></div>
     </section>
   </div>
@@ -207,5 +229,6 @@
   <script src="js/app.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/load.js"></script>
+  <script src="js/fx.js"></script>
 </body>
 </html>
