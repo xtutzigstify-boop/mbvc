@@ -63,8 +63,6 @@
     const cards = [['users', sum.groups, 'Групп'], ['book', sum.subjects, 'Предметов'], ['user', sum.teachers, 'Преподавателей'], ['clock', sum.hours, `Часов в ${set.sem} семестре`], ['grid', sum.pairs, 'Пар в неделю']];
     $('#loadStats').innerHTML = cards.map(([ic, v, label], i) => `<div class="kpi" style="animation-delay:${i * 60}ms"><span class="kpi-i">${icon(ic)}</span><b>${fmt(v) || 0}</b><span>${label}</span></div>`).join('');
     document.querySelectorAll('.kpi b').forEach((el, i) => { if (Number.isInteger(cards[i][1]) && cards[i][1] > 0) countUp(el, cards[i][1]); });
-    const warn = sum.warnings;
-    $('#loadWarn').innerHTML = warn.slice(0, 3).map(w => `<p class="lw ${w.level}">⚠ ${esc(w.text)}</p>`).join('') + (warn.length > 3 ? `<p class="lw soft">…и ещё предупреждений: ${warn.length - 3}</p>` : '');
   }
 
   /* ---------- Таблица ---------- */
